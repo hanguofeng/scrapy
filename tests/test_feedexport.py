@@ -376,7 +376,7 @@ class S3FeedStorageTest(unittest.TestCase):
         settings = {
             'AWS_ACCESS_KEY_ID': 'access_key',
             'AWS_SECRET_ACCESS_KEY': 'secret_key',
-            'AWS_REGION_NAME' : 'aws_mock_region'
+            'AWS_REGION_NAME': 'aws_mock_region'
         }
         crawler = get_crawler(settings_dict=settings)
         storage = S3FeedStorage.from_crawler(
