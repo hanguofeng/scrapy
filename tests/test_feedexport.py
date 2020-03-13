@@ -1,32 +1,32 @@
-import os
 import csv
 import json
-import warnings
-import tempfile
+import os
 import shutil
 import string
+import tempfile
+import warnings
 from io import BytesIO
-from pathlib import Path
 from unittest import mock
+
+from pathlib import Path
+from twisted.internet import defer
+from twisted.trial import unittest
 from urllib.parse import urljoin, urlparse, quote
 from urllib.request import pathname2url
-
-from zope.interface.verify import verifyObject
-from twisted.trial import unittest
-from twisted.internet import defer
-from scrapy.crawler import CrawlerRunner
-from scrapy.settings import Settings
-from tests.mockserver import MockServer
 from w3lib.url import path_to_file_uri
+from zope.interface.verify import verifyObject
 
 import scrapy
+from scrapy.crawler import CrawlerRunner
 from scrapy.exporters import CsvItemExporter
 from scrapy.extensions.feedexport import (
     IFeedStorage, FileFeedStorage, FTPFeedStorage,
     S3FeedStorage, StdoutFeedStorage,
     BlockingFeedStorage)
-from scrapy.utils.test import assert_aws_environ, get_s3_content_and_delete, get_crawler
+from scrapy.settings import Settings
 from scrapy.utils.python import to_unicode
+from scrapy.utils.test import assert_aws_environ, get_s3_content_and_delete, get_crawler
+from tests.mockserver import MockServer
 
 
 class FileFeedStorageTest(unittest.TestCase):
@@ -74,6 +74,7 @@ class FTPFeedStorageTest(unittest.TestCase):
     def get_test_spider(self, settings=None):
         class TestSpider(scrapy.Spider):
             name = 'test_spider'
+
         crawler = get_crawler(settings_dict=settings)
         spider = TestSpider.from_crawler(crawler)
         return spider
@@ -127,6 +128,7 @@ class BlockingFeedStorageTest(unittest.TestCase):
     def get_test_spider(self, settings=None):
         class TestSpider(scrapy.Spider):
             name = 'test_spider'
+
         crawler = get_crawler(settings_dict=settings)
         spider = TestSpider.from_crawler(crawler)
         return spider
@@ -358,6 +360,34 @@ class S3FeedStorageTest(unittest.TestCase):
             key.set_contents_from_file.call_args
         )
 
+    def test_init_with_region(self):
+        storage = S3FeedStorage(
+            's3://mybucket/export.csv',
+             'access_key',
+             'secret_key',
+             region='aws_mock_region'
+        )
+        self.assertEqual(storage.access_key, 'access_key')
+        self.assertEqual(storage.secret_key, 'secret_key')
+        self.assertEqual(storage.region, 'aws_mock_region')
+        self.assertEqual(storage.acl, None)
+
+    def test_from_crawler_with_region(self):
+        settings = {
+            'AWS_ACCESS_KEY_ID': 'access_key',
+            'AWS_SECRET_ACCESS_KEY': 'secret_key',
+            'AWS_REGION_NAME' : 'aws_mock_region'
+        }
+        crawler = get_crawler(settings_dict=settings)
+        storage = S3FeedStorage.from_crawler(
+            crawler,
+            's3://mybucket/export.csv'
+        )
+        self.assertEqual(storage.access_key, 'access_key')
+        self.assertEqual(storage.secret_key, 'secret_key')
+        self.assertEqual(storage.region, 'aws_mock_region')
+        self.assertEqual(storage.acl, None)
+
 
 class StdoutFeedStorageTest(unittest.TestCase):
 
@@ -389,7 +419,6 @@ class FromCrawlerFileFeedStorage(FileFeedStorage, FromCrawlerMixin):
 
 
 class FeedExportTest(unittest.TestCase):
-
     class MyItem(scrapy.Item):
         foo = scrapy.Field()
         egg = scrapy.Field()
@@ -426,6 +455,7 @@ class FeedExportTest(unittest.TestCase):
         """
         Return exported data which a spider yielding ``items`` would return.
         """
+
         class TestSpider(scrapy.Spider):
             name = 'testspider'
 
@@ -441,6 +471,7 @@ class FeedExportTest(unittest.TestCase):
         """
         Return exported data which a spider yielding no ``items`` would return.
         """
+
         class TestSpider(scrapy.Spider):
             name = 'testspider'
 
@@ -581,9 +612,9 @@ class FeedExportTest(unittest.TestCase):
         header = self.MyItem.fields.keys()
         rows_csv = [
             {'egg': 'spam1', 'foo': 'bar1', 'baz': ''},
-            {'egg': '',      'foo': 'bar2', 'baz': ''},
+            {'egg': '', 'foo': 'bar2', 'baz': ''},
             {'egg': 'spam3', 'foo': 'bar3', 'baz': 'quux3'},
-            {'egg': 'spam4', 'foo': '',     'baz': ''},
+            {'egg': 'spam4', 'foo': '', 'baz': ''},
         ]
         rows_jl = [dict(row) for row in items]
         yield self.assertExportedCsv(items, header, rows_csv, ordered=False)
@@ -598,10 +629,10 @@ class FeedExportTest(unittest.TestCase):
         header = ["foo", "baz", "hello"]
         settings = {'FEED_EXPORT_FIELDS': header}
         rows = [
-            {'foo': 'bar1', 'baz': '',      'hello': ''},
-            {'foo': 'bar2', 'baz': '',      'hello': 'world2'},
+            {'foo': 'bar1', 'baz': '', 'hello': ''},
+            {'foo': 'bar2', 'baz': '', 'hello': 'world2'},
             {'foo': 'bar3', 'baz': 'quux3', 'hello': ''},
-            {'foo': '',     'baz': '',      'hello': 'world4'},
+            {'foo': '', 'baz': '', 'hello': 'world4'},
         ]
         yield self.assertExported(items, header, rows,
                                   settings=settings, ordered=True)
@@ -659,7 +690,8 @@ class FeedExportTest(unittest.TestCase):
         formats = {
             'json': u'[{"foo": "Test\\u00d6"}]'.encode('utf-8'),
             'jsonlines': u'{"foo": "Test\\u00d6"}\n'.encode('utf-8'),
-            'xml': u'<?xml version="1.0" encoding="utf-8"?>\n<items><item><foo>Test\xd6</foo></item></items>'.encode('utf-8'),
+            'xml': u'<?xml version="1.0" encoding="utf-8"?>\n<items><item><foo>Test\xd6</foo></item></items>'.encode(
+                'utf-8'),
             'csv': u'foo\r\nTest\xd6\r\n'.encode('utf-8'),
         }
 
@@ -671,7 +703,8 @@ class FeedExportTest(unittest.TestCase):
         formats = {
             'json': u'[{"foo": "Test\xd6"}]'.encode('latin-1'),
             'jsonlines': u'{"foo": "Test\xd6"}\n'.encode('latin-1'),
-            'xml': u'<?xml version="1.0" encoding="latin-1"?>\n<items><item><foo>Test\xd6</foo></item></items>'.encode('latin-1'),
+            'xml': u'<?xml version="1.0" encoding="latin-1"?>\n<items><item><foo>Test\xd6</foo></item></items>'.encode(
+                'latin-1'),
             'csv': u'foo\r\nTest\xd6\r\n'.encode('latin-1'),
         }
 
