@@ -109,7 +109,7 @@ class S3FeedStorage(BlockingFeedStorage):
                 )
                 access_key = settings['AWS_ACCESS_KEY_ID']
                 secret_key = settings['AWS_SECRET_ACCESS_KEY']
-                region = settings['AWS_REGION']
+                region = settings['AWS_REGION_NAME']
         # END Backward compatibility
         u = urlparse(uri)
         self.bucketname = u.hostname
