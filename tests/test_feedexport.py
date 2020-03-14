@@ -363,9 +363,9 @@ class S3FeedStorageTest(unittest.TestCase):
     def test_init_with_region(self):
         storage = S3FeedStorage(
             's3://mybucket/export.csv',
-             'access_key',
-             'secret_key',
-             region='aws_mock_region'
+            'access_key',
+            'secret_key',
+            region='aws_mock_region'
         )
         self.assertEqual(storage.access_key, 'access_key')
         self.assertEqual(storage.secret_key, 'secret_key')
